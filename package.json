@@ -9,7 +9,8 @@
 		"test:plugin": "node test/check-plugin.js",
 		"logo": "node tools/make-logo.js 128 logo.png",
 		"preview": "node tools/preview.js 8791",
-		"inspect": "node tools/inspect-abr.js"
+		"inspect": "node tools/inspect-abr.js",
+		"package": "node tools/make-package.js"
 	},
 	"engines": {
 		"node": ">=16"

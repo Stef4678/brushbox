@@ -3,6 +3,8 @@ node_modules/
 test/fixtures/
 # Real .abr samples are third-party and large; bring your own.
 test/real/
+# Packaged .eagleplugin builds.
+dist/
 *.log
 *.tmp
 .DS_Store

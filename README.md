@@ -89,15 +89,30 @@ Copy this folder into Eagle's plugin directory and restart Eagle:
 
 ### Packaging for distribution
 
-In Eagle: open the plugin panel (`P`), right-click the plugin, and choose **Pack Plugin**.
-Exclude the development-only paths — `test/`, `tools/`, `docs/`, `assets/`, `package.json`,
-`README.md` and `.gitignore`. Only these are needed at runtime:
+The simplest route is the built-in packager:
+
+```bash
+npm run package          # writes dist/BrushBox-<version>.eagleplugin
+```
+
+A `.eagleplugin` is just a ZIP holding the runtime files at its root, so the script writes one
+directly — an explicit allowlist, no build step, and no dependency on having Eagle open. It is
+byte-for-byte reproducible, which means two builds of the same source produce an identical file.
+
+You can also do it in Eagle: open the plugin panel (`P`), right-click the plugin, and choose
+**Pack Plugin**.
+
+Either way, only these files belong in the package:
 
 ```
 manifest.json   logo.png   index.html
 css/style.css
 js/bridge.js    js/abr.js   js/render.js   js/app.js
 ```
+
+Exclude `test/`, `tools/`, `docs/`, `assets/`, `dist/`, `package.json`, `README.md` and
+`.gitignore`. The packager enforces this: it refuses to run if a runtime file is missing and will
+never include a development path.
 
 ---
 
@@ -226,6 +241,7 @@ brushbox/
 │  └─ app.js              UI state, wiring, import/export flows
 ├─ tools/
 │  ├─ make-logo.js        Draws logo.png (zlib-only PNG writer, no image libraries)
+│  ├─ make-package.js     Builds dist/BrushBox-<version>.eagleplugin (hand-written ZIP)
 │  ├─ inspect-abr.js      CLI: what the parser made of a file, incl. the join report
 │  └─ preview.js          Local dev server for inspecting the UI in a browser
 ├─ test/
@@ -259,6 +275,7 @@ npm test              # parser tests + plugin integrity checks
 npm run test:parser   # writes .abr files byte by byte, then reads them back
 npm run test:plugin   # id contract, assets, manifest, layering invariants
 npm run inspect       # npm run inspect -- path/to/file.abr
+npm run package       # build dist/BrushBox-1.0.0.eagleplugin
 npm run logo          # regenerate logo.png at 128×128
 npm run preview       # serve the UI at http://127.0.0.1:8791
 ```
