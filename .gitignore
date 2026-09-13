@@ -1,0 +1,10 @@
+# Development artifacts — none of this belongs in a published plugin.
+node_modules/
+test/fixtures/
+# Real .abr samples are third-party and large; bring your own.
+test/real/
+# Cover / listing artwork working files, which may embed third-party brush art.
+assets/
+*.log
+.DS_Store
+Thumbs.db

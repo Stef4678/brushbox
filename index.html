@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>BrushBox — ABR Brush Studio</title>
+	<link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body data-theme="dark" data-mode="single">
+
+	<!-- ====================== Title bar ====================== -->
+	<header class="titlebar">
+		<div class="brand">
+			<img class="brand-logo" src="logo.png" alt="" draggable="false" />
+			<div class="brand-text">
+				<span class="brand-name">BrushBox</span>
+				<span class="brand-sub">ABR Brush Studio</span>
+			</div>
+		</div>
+
+		<div class="titlebar-drag"></div>
+
+		<div class="segmented segmented-mode" id="segMode" role="radiogroup" aria-label="Mode">
+			<button type="button" role="radio" data-value="single" class="is-active" aria-checked="true">Single</button>
+			<button type="button" role="radio" data-value="batch" aria-checked="false">Batch</button>
+		</div>
+
+		<div class="titlebar-meta">
+			<span class="chip" id="chipLibrary" title="Active Eagle library">
+				<svg viewBox="0 0 24 24" class="ico"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H9v18H5.5A2.5 2.5 0 0 1 3 18.5v-13Z" /><path d="M11 3h7.5A2.5 2.5 0 0 1 21 5.5v13a2.5 2.5 0 0 1-2.5 2.5H11V3Z" opacity=".45" /></svg>
+				<span id="libraryName">Eagle</span>
+			</span>
+		</div>
+
+		<div class="window-controls">
+			<button class="win-btn" id="btnMinimize" type="button" title="Minimise" aria-label="Minimise">
+				<svg viewBox="0 0 12 12"><path d="M2.5 6h7" /></svg>
+			</button>
+			<button class="win-btn" id="btnMaximize" type="button" title="Maximise" aria-label="Maximise">
+				<svg viewBox="0 0 12 12"><rect x="2.75" y="2.75" width="6.5" height="6.5" rx="1.25" /></svg>
+			</button>
+			<button class="win-btn win-btn-close" id="btnClose" type="button" title="Close" aria-label="Close">
+				<svg viewBox="0 0 12 12"><path d="M3.2 3.2l5.6 5.6M8.8 3.2l-5.6 5.6" /></svg>
+			</button>
+		</div>
+	</header>
+
+	<!-- ====================== Body ====================== -->
+	<main class="shell">
+
+		<!-- ---------- Left rail ---------- -->
+		<aside class="rail">
+
+			<section class="panel">
+				<header class="panel-head">
+					<h2>Source</h2>
+					<span class="panel-hint">.abr sets</span>
+				</header>
+
+				<div class="dropzone" id="dropZone" tabindex="0" role="button" aria-label="Drop .abr files or click to browse">
+					<svg viewBox="0 0 24 24" class="dropzone-ico">
+						<path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" />
+						<path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15" />
+					</svg>
+					<p class="dropzone-title">Drop .abr files</p>
+					<p class="dropzone-sub">or click to browse — many at once is fine</p>
+				</div>
+				<input type="file" id="fileInput" accept=".abr" multiple hidden />
+
+				<div class="btn-row">
+					<button class="btn btn-ghost" id="btnOpenFiles" type="button">
+						<svg viewBox="0 0 24 24" class="ico"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.2a2 2 0 0 1 1.6.8l.9 1.2h7.3A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-9Z" /></svg>
+						Browse files
+					</button>
+					<button class="btn btn-ghost" id="btnEagleSelection" type="button" title="Open the .abr files selected in Eagle">
+						<svg viewBox="0 0 24 24" class="ico"><path d="M4 12.5 12 4l8 8.5" /><path d="M6.5 11v7.5A1.5 1.5 0 0 0 8 20h8a1.5 1.5 0 0 0 1.5-1.5V11" /></svg>
+						From selection
+					</button>
+				</div>
+			</section>
+
+			<section class="panel panel-grow">
+				<header class="panel-head">
+					<h2>Brush sets</h2>
+					<span class="panel-hint" id="setCount">none</span>
+				</header>
+				<ul class="set-list" id="setList"></ul>
+				<p class="empty-note" id="setEmpty">Loaded sets appear here.</p>
+			</section>
+
+			<section class="panel">
+				<header class="panel-head">
+					<h2>Output</h2>
+					<span class="panel-hint">PNG</span>
+				</header>
+
+				<div class="field">
+					<div class="field-row">
+						<label class="field-label" for="rangePad">Padding</label>
+						<output class="field-value" id="outPad">8%</output>
+					</div>
+					<input type="range" id="rangePad" min="0" max="40" step="1" value="8" />
+				</div>
+
+				<div class="field">
+					<div class="field-row">
+						<label class="field-label" for="selectScale">Tile size</label>
+					</div>
+					<select class="select" id="selectScale">
+						<option value="1">Native brush size</option>
+						<option value="2" selected>2× (crisp previews)</option>
+						<option value="4">4× (print / detail)</option>
+						<option value="fixed512">Fixed 512 px</option>
+						<option value="fixed1024">Fixed 1024 px</option>
+					</select>
+				</div>
+
+				<div class="field">
+					<div class="field-row">
+						<label class="field-label" for="selectBg">Background</label>
+					</div>
+					<select class="select" id="selectBg">
+						<option value="dark" selected>Dark</option>
+						<option value="transparent">Transparent</option>
+						<option value="light">Light</option>
+						<option value="checker">Checker</option>
+					</select>
+					<p class="field-help">Dark keeps a light brush visible once it lands in Eagle. Pick Transparent for a cut-out PNG.</p>
+				</div>
+
+				<div class="field">
+					<div class="field-row">
+						<label class="field-label" for="inputTags">Tags</label>
+					</div>
+					<input class="input" id="inputTags" type="text" placeholder="brush, photoshop" />
+					<p class="field-help">Comma separated. Applied to every imported brush.</p>
+				</div>
+
+				<div class="field">
+					<div class="field-row">
+						<label class="field-label" for="selectFolder">Eagle folder</label>
+					</div>
+					<select class="select" id="selectFolder">
+						<option value="">— none —</option>
+					</select>
+				</div>
+			</section>
+		</aside>
+
+		<!-- ---------- Centre ---------- -->
+		<section class="stage-area" id="stageArea">
+
+			<!-- Single-brush view -->
+			<div class="single-view" id="singleView">
+				<div class="stage-toolbar">
+					<div class="stage-title">
+						<span class="stage-brush-name" id="stageBrushName">No brush loaded</span>
+						<span class="stage-brush-src" id="stageBrushSrc"></span>
+					</div>
+					<div class="stage-tools">
+						<button class="tool-btn" id="btnPrevBrush" type="button" title="Previous brush (←)" aria-label="Previous brush">
+							<svg viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5" /></svg>
+						</button>
+						<span class="stage-index" id="stageIndex">–</span>
+						<button class="tool-btn" id="btnNextBrush" type="button" title="Next brush (→)" aria-label="Next brush">
+							<svg viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5" /></svg>
+						</button>
+						<span class="tool-divider"></span>
+						<button class="tool-btn" id="btnFit" type="button" title="Fit to window" aria-label="Fit to window">
+							<svg viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" /></svg>
+						</button>
+						<span class="tool-divider"></span>
+						<button class="tool-btn tool-btn-wide" id="btnCycleBg" type="button" title="Cycle background">
+							<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 3.5v17" /><path d="M12 12h8.5" opacity=".45" /></svg>
+							<span id="stageBgLabel">Dark</span>
+						</button>
+					</div>
+				</div>
+
+				<div class="stage" id="stage">
+					<div class="stage-empty" id="stageEmpty">
+						<img class="stage-empty-logo" src="logo.png" alt="" draggable="false" />
+						<h3>Open a Photoshop brush set</h3>
+						<p>Drop an <code>.abr</code> file anywhere in this window, browse for one, or pick a set already in your Eagle library.</p>
+						<p class="stage-empty-hint">BrushBox reads the brush bitmaps and settings inside the file and renders every brush at full quality — then sends them straight into Eagle as PNGs.</p>
+					</div>
+					<canvas id="stageCanvas" width="600" height="600" hidden></canvas>
+				</div>
+
+				<div class="filmstrip-wrap">
+					<header class="filmstrip-head">
+						<span class="filmstrip-title">Brushes in this set</span>
+						<span class="filmstrip-hint" id="filmstripHint">—</span>
+					</header>
+					<div class="filmstrip" id="filmstrip"></div>
+				</div>
+			</div>
+
+			<!-- Batch view -->
+			<div class="batch-view" id="batchView" hidden>
+				<div class="batch-toolbar">
+					<div class="batch-tools-left">
+						<button class="btn btn-ghost btn-sm" id="btnSelectAll" type="button">Select all</button>
+						<button class="btn btn-ghost btn-sm" id="btnSelectNone" type="button">None</button>
+						<button class="btn btn-ghost btn-sm" id="btnSelectInvert" type="button">Invert</button>
+					</div>
+					<div class="batch-tools-right">
+						<span class="batch-count" id="batchCount">0 selected</span>
+						<button class="btn btn-ghost btn-sm" id="btnContactSheet" type="button">
+							<svg viewBox="0 0 24 24" class="ico"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></svg>
+							Contact sheet
+						</button>
+						<button class="btn btn-primary btn-sm" id="btnImportSelected" type="button">
+							<svg viewBox="0 0 24 24" class="ico"><path d="M12 4v11m0 0 4-4m-4 4-4-4" /><path d="M5 19h14" /></svg>
+							Import to Eagle
+						</button>
+					</div>
+				</div>
+				<div class="batch-grid" id="batchGrid"></div>
+				<div class="batch-empty" id="batchEmpty">
+					<p>Load a brush set to see every brush laid out here — then tick the ones you want and import them in one go.</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- ---------- Inspector ---------- -->
+		<aside class="inspector" id="inspector">
+			<section class="panel" id="panelPreview">
+				<header class="panel-head">
+					<h2>Preview</h2>
+					<span class="panel-hint">render</span>
+				</header>
+
+				<div class="field">
+					<label class="field-label">Colour</label>
+					<div class="swatches" id="swatches"></div>
+					<div class="color-row">
+						<input type="color" id="inputColor" value="#f4f5f8" aria-label="Custom brush colour" />
+						<span class="color-hex" id="colorHex">#F4F5F8</span>
+					</div>
+				</div>
+
+				<div class="field">
+					<div class="field-row">
+						<label class="field-label" for="rangeSize">Size</label>
+						<output class="field-value" id="outSize">320 px</output>
+					</div>
+					<input type="range" id="rangeSize" min="16" max="900" step="1" value="320" />
+					<div class="field-inline">
+						<label class="check"><input type="checkbox" id="checkNative" /><span>Native size</span></label>
+					</div>
+				</div>
+
+				<div class="field">
+					<label class="field-label">Render as</label>
+					<div class="segmented" id="segRender" role="radiogroup">
+						<button type="button" role="radio" data-value="dab" class="is-active" aria-checked="true">Dab</button>
+						<button type="button" role="radio" data-value="stroke" aria-checked="false">Stroke</button>
+						<button type="button" role="radio" data-value="grid" aria-checked="false">Size ramp</button>
+					</div>
+				</div>
+
+				<div class="field" id="fieldSpacing">
+					<div class="field-row">
+						<label class="field-label" for="rangeSpacing">Spacing</label>
+						<output class="field-value" id="outSpacing">25%</output>
+					</div>
+					<input type="range" id="rangeSpacing" min="1" max="200" step="1" value="25" />
+					<div class="field-inline">
+						<label class="check"><input type="checkbox" id="checkBrushSpacing" checked /><span>Use brush's own spacing</span></label>
+					</div>
+				</div>
+
+				<div class="field">
+					<div class="field-row">
+						<label class="field-label" for="rangeAngle">Angle</label>
+						<output class="field-value" id="outAngle">0°</output>
+					</div>
+					<input type="range" id="rangeAngle" min="-180" max="180" step="1" value="0" />
+				</div>
+			</section>
+
+			<section class="panel panel-grow" id="panelDetails">
+				<header class="panel-head">
+					<h2>Brush</h2>
+					<span class="panel-hint" id="detailKind">—</span>
+				</header>
+				<dl class="details" id="details"></dl>
+				<p class="empty-note" id="detailsEmpty">Select a brush to inspect it.</p>
+			</section>
+
+			<section class="panel" id="panelBatch">
+				<header class="panel-head">
+					<h2>Batch</h2>
+					<span class="panel-hint" id="batchSets">—</span>
+				</header>
+				<dl class="details" id="batchSummary"></dl>
+			</section>
+		</aside>
+	</main>
+
+	<!-- ====================== Status bar ====================== -->
+	<footer class="statusbar">
+		<span class="status-item" id="statusSets">0 sets</span>
+		<span class="status-dot"></span>
+		<span class="status-item" id="statusBrushes">0 brushes</span>
+		<span class="status-sep"></span>
+		<span class="status-msg" id="statusMsg">Ready</span>
+		<div class="progress" id="progress" hidden><div class="progress-bar" id="progressBar"></div></div>
+	</footer>
+
+	<!-- ====================== Overlays ====================== -->
+	<div class="toasts" id="toasts"></div>
+
+	<div class="drop-overlay" id="dropOverlay" hidden>
+		<div class="drop-overlay-card">
+			<svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" /><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15" /></svg>
+			<p>Release to open</p>
+		</div>
+	</div>
+
+	<script src="js/bridge.js"></script>
+	<script src="js/abr.js"></script>
+	<script src="js/render.js"></script>
+	<script src="js/app.js"></script>
+</body>
+
+</html>

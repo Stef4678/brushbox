@@ -1,0 +1,39 @@
+{
+	"id": "brushbox",
+	"version": "1.0.0",
+	"platform": "all",
+	"arch": "all",
+	"name": "BrushBox",
+	"description": "Open, preview and unpack Photoshop .abr brush files — inspect a single brush set, or batch-render every brush into your Eagle library.",
+	"logo": "/logo.png",
+	"keywords": [
+		"abr",
+		"brush",
+		"brushes",
+		"photoshop",
+		"ps brush",
+		"brush viewer",
+		"brush preview",
+		"brush set",
+		"stamp",
+		"batch",
+		"render",
+		"png"
+	],
+	"devTools": false,
+	"main": {
+		"url": "index.html",
+		"width": 1280,
+		"height": 860,
+		"minWidth": 1040,
+		"minHeight": 660,
+		"frame": false,
+		"backgroundColor": "#0c0d12",
+		"resizable": true,
+		"minimizable": true,
+		"maximizable": true,
+		"fullscreenable": true,
+		"multiple": false,
+		"runAfterInstall": false
+	}
+}
