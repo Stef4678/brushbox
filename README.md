@@ -362,6 +362,17 @@ descriptions and cross-checked with several independent implementations:
 
 Research notes and the full byte-level specification are in `docs/`.
 
+### Brushes in the screenshots
+
+The screenshots above show brushes from **Stéphane "Wootha" Richard's public-domain brush set**,
+made available under the *Do Whatever You Want To Public License*:
+
+- [Wootha Public Domain on the Internet Archive](https://archive.org/details/Wootha_Public_Domain)
+- © 2020 Stéphane "Wootha" Richard — `art@wootha.com` (per the archive's `LICENSE.txt`)
+
+That licence covers the brush artwork in the images only. The plugin code in this repository is
+covered by the MIT licence below.
+
 ---
 
 ## Contact
