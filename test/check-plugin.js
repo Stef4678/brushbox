@@ -77,7 +77,13 @@ section('manifest.json');
 
 	if (manifest) {
 		ok(typeof manifest.id === 'string' && manifest.id.length > 0, 'has a non-empty id');
-		ok(/^[a-z0-9][a-z0-9-_]*$/i.test(manifest.id || ''), 'id is url-safe: ' + manifest.id);
+
+		// The Plugin Center rejects anything that is not a canonical UUID, and
+		// the installed folder is named after the id. Eagle's own bundled
+		// plugins use short slugs, which is why a slug looks plausible until
+		// submission fails.
+		const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+		ok(UUID.test(manifest.id || ''), 'id is a canonical UUID: ' + manifest.id);
 		ok(typeof manifest.version === 'string' && /^\d+\.\d+\.\d+$/.test(manifest.version || ''),
 			'version is semver: ' + manifest.version);
 		ok(manifest.name === 'BrushBox', 'name is BrushBox');
