@@ -195,6 +195,29 @@ section('Referenced files exist');
 }
 
 /* ==================================================================== *
+ * README images
+ * ==================================================================== */
+
+section('README images');
+{
+	// A broken image link is invisible until someone views the repo, and the
+	// README has already been re-pointed at new files once.
+	const readme = read('README.md');
+	const images = Array.from(readme.matchAll(/!\[[^\]]*\]\(([^)\s]+)/g), (m) => m[1]);
+
+	ok(images.length > 0, 'README embeds ' + images.length + ' images');
+
+	const broken = images.filter((src) => !/^https?:/i.test(src) && !exists(decodeURI(src)));
+	ok(broken.length === 0, 'every README image resolves' +
+		(broken.length ? ' — missing: ' + broken.join(', ') : ''));
+
+	// Catch a stale pointer at a directory that no longer exists.
+	const stale = Array.from(readme.matchAll(/\]\((docs\/screenshots\/[^)]+)\)/g), (m) => m[1]);
+	ok(stale.length === 0, 'no README references to the retired docs/screenshots/ directory' +
+		(stale.length ? ' — ' + stale.join(', ') : ''));
+}
+
+/* ==================================================================== *
  * Layering
  * ==================================================================== */
 

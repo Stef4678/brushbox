@@ -6,7 +6,7 @@ PNGs.
 
 Single mode for studying one brush. Batch mode for unpacking a whole library of sets.
 
-![BrushBox in single mode](docs/screenshots/single.png)
+![BrushBox](assets/hero.jpg)
 
 ---
 
@@ -30,15 +30,15 @@ roundness squash and X/Y flips applied.
 metadata: kind, native size, spacing, hardness, angle, roundness, dynamics, texture and dual-brush
 settings.
 
+![BrushBox in single mode](assets/screenshot-single-mode.png)
+
 **Batch mode** — every brush from every loaded set in one grid. Tick what you want and import the
 selection in one pass: each brush becomes its own PNG item, with your tags, a target folder, and an
 annotation recording the source set and brush metrics.
 
-![BrushBox in batch mode](docs/screenshots/batch.png)
+![BrushBox in batch mode](assets/screenshot-batch-mode.png)
 
 **Contact sheet** — export a single labelled overview PNG of everything selected.
-
-![Contact sheet export](docs/screenshots/export.png)
 
 **Other things it does**
 
@@ -48,10 +48,6 @@ annotation recording the source set and brush metrics.
   (dark, transparent, light, checker)
 - Follows Eagle's light and dark themes
 - Colour, size, angle and render mode are all adjustable live
-
-| Stroke preview | Size ramp |
-| --- | --- |
-| ![Stroke preview](docs/screenshots/stroke.png) | ![Size ramp](docs/screenshots/ramp.png) |
 
 ---
 
@@ -237,10 +233,13 @@ brushbox/
 │  ├─ check-plugin.js     Static checks: id contract, assets, manifest, layering
 │  ├─ fixtures/           Generated on each test run (gitignored)
 │  └─ real/               Drop your own .abr files here to have them tested (gitignored)
-└─ docs/
-   ├─ abr-format-spec.md  Byte-level specification of the .abr container
-   ├─ eagle-api-notes.md  Notes on the Eagle Plugin API
-   └─ screenshots/        Images used in this README
+├─ assets/
+│  ├─ hero.jpg                    Listing cover artwork
+│  ├─ screenshot-single-mode.png  Single-brush view
+│  └─ screenshot-batch-mode.png   Batch grid
+├─ docs/
+│  ├─ abr-format-spec.md  Byte-level specification of the .abr container
+│  └─ eagle-api-notes.md  Notes on the Eagle Plugin API
 ```
 
 The layering is deliberate and enforced by `test/check-plugin.js`:
