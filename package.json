@@ -1,6 +1,6 @@
 {
 	"name": "brushbox",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"private": true,
 	"description": "Eagle plugin that opens, previews and unpacks Adobe Photoshop .abr brush files — one set at a time, or in batch.",
 	"scripts": {

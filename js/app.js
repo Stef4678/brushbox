@@ -1153,7 +1153,39 @@
 		}
 	}
 
-	/** Saves the current preview as a PNG via the native save dialog. */
+	/**
+	 * Wording for a finished PNG export, in one place so that the brush
+	 * export, the Ctrl/Cmd+S shortcut and the contact sheet all disclose a
+	 * name collision the same way.
+	 *
+	 * `bridge.saveCanvasToFolder()` never replaces an existing file: when the
+	 * requested name is taken it writes beside it under a free one. That means
+	 * the name on disk can differ from the one asked for, and the folder can
+	 * end up holding two files, so both facts are stated outright — the file
+	 * that was written and the one that was left untouched — rather than left
+	 * for the user to discover.
+	 *
+	 * @returns {{status: string, toastTitle: string, toastBody: string, kind: string}}
+	 */
+	function describeSave(label, saved) {
+		if (!saved.renamed) {
+			return {
+				status: label + ' ' + saved.fileName,
+				toastTitle: label,
+				toastBody: saved.path,
+				kind: 'ok'
+			};
+		}
+		return {
+			status: label + ' ' + saved.fileName + ' — the existing ' + saved.requestedFileName + ' was left untouched',
+			toastTitle: label + ' as ' + saved.fileName,
+			toastBody: 'A file named ' + saved.requestedFileName + ' was already in that folder, so nothing was ' +
+				'replaced. The new PNG is ' + saved.path,
+			kind: 'info'
+		};
+	}
+
+	/** Saves the current preview as a PNG into a folder the user picks. */
 	async function exportCurrentPng() {
 		var brush = activeBrush();
 		if (!brush) {
@@ -1175,10 +1207,12 @@
 				padding: state.output.padding,
 				color: state.preview.color
 			});
-			var fullPath = await bridge.saveCanvasToFolder(canvas, directory, brush.name);
-			toast('Saved', fullPath, 'ok');
-			setStatus('Saved ' + brush.name + '.png', 'ok');
-			bridge.showItemInFolder(fullPath);
+			var saved = await bridge.saveCanvasToFolder(canvas, directory, brush.name);
+			var report = describeSave('Saved', saved);
+
+			toast(report.toastTitle, report.toastBody, report.kind);
+			setStatus(report.status, 'ok');
+			bridge.showItemInFolder(saved.path);
 		} catch (err) {
 			toast('Could not save the PNG', err.message, 'error');
 		}
@@ -1217,20 +1251,21 @@
 				cell: 200
 			});
 
-			var fullPath = await bridge.saveCanvasToFolder(canvas, directory,
-				(names.length === 1 ? names[0] : 'brushbox') + '-contact-sheet');
+			var sheetName = (names.length === 1 ? names[0] : 'brushbox') + '-contact-sheet';
+			var saved = await bridge.saveCanvasToFolder(canvas, directory, sheetName);
+			var report = describeSave('Contact sheet saved', saved);
 
-			endBusy('Saved the contact sheet', 'ok');
+			endBusy(report.status, 'ok');
 
 			var sheet = canvas.sheetInfo;
 			if (sheet && sheet.drawn < sheet.total) {
-				toast('Contact sheet saved',
+				toast(report.toastTitle,
 					'It fits ' + sheet.drawn + ' of ' + sheet.total + ' brushes at a readable size. ' +
-					'Split the selection for the rest.', 'info');
+					'Split the selection for the rest.' + (saved.renamed ? ' ' + report.toastBody : ''), 'info');
 			} else {
-				toast('Contact sheet saved', fullPath, 'ok');
+				toast(report.toastTitle, report.toastBody, report.kind);
 			}
-			bridge.showItemInFolder(fullPath);
+			bridge.showItemInFolder(saved.path);
 		} catch (err) {
 			endBusy();
 			toast('Could not build the contact sheet', err.message, 'error');

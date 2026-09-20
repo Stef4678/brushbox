@@ -156,6 +156,11 @@ invisible against a light view.
 - **Contact sheet** (batch mode) — one labelled PNG of the whole selection.
 - **`Ctrl` / `Cmd` + `S`** — saves the current brush as a PNG wherever you choose.
 
+Saving never replaces a file. If the folder you pick already holds a PNG of that name, BrushBox
+writes beside it instead — `Soft Round.png` becomes `Soft Round (2).png` — and says which name it
+used and which file it left untouched. The name is claimed by creating the file exclusively, so an
+existing PNG cannot be overwritten even if something else creates it at the same moment.
+
 Double-click a card in batch mode to open that brush in single mode.
 
 ### Keyboard
@@ -177,8 +182,10 @@ no account, and sends nothing anywhere.**
   It never modifies, moves, or deletes them.
 - **What it writes** — rendered PNGs. During an import, each PNG is staged in your operating
   system's temporary folder, handed to Eagle, and deleted immediately afterwards. Anything a
-  previous session left behind is swept on start-up. When you use **Save PNG** or **Contact
-  sheet**, the file is written to the folder you pick.
+  previous session left behind is swept on start-up — and only files BrushBox staged itself are
+  ever swept, so nothing else in that folder is touched. When you use **Save PNG** or **Contact
+  sheet**, the file is written to the folder you pick — and a file that is already there is never
+  replaced: the export takes the next free name and the interface names both files.
 - **What it changes in Eagle** — nothing until you ask. Only **Import to Eagle** adds items to your
   library, and only for the brushes you ticked.
 - **No third-party code.** The plugin has no dependencies and bundles no external libraries.
@@ -275,7 +282,7 @@ npm test              # parser tests + plugin integrity checks
 npm run test:parser   # writes .abr files byte by byte, then reads them back
 npm run test:plugin   # id contract, assets, manifest, layering invariants
 npm run inspect       # npm run inspect -- path/to/file.abr
-npm run package       # build dist/BrushBox-1.0.0.eagleplugin
+npm run package       # build dist/BrushBox-1.0.1.eagleplugin
 npm run logo          # regenerate logo.png at 128×128
 npm run preview       # serve the UI at http://127.0.0.1:8791
 ```

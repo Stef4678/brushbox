@@ -95,12 +95,28 @@
 		return dir;
 	}
 
-	/** Removes leftovers from a previous session. */
+	/**
+	 * Matches the name of a PNG this plugin staged itself:
+	 * `<milliseconds>-<random>-<brush name>.png`.
+	 *
+	 * The temporary folder is a shared one, so the sweep below recognises its
+	 * own leftovers by name rather than deleting whatever happens to be
+	 * sitting there. The cost of being wrong is a stale PNG, which is the
+	 * right way round for a plugin that otherwise never removes anything.
+	 */
+	var STAGED_NAME = /^\d{10,}-[0-9a-z]*-[\s\S]+\.png$/;
+
+	function isStagedName(fileName) {
+		return STAGED_NAME.test(String(fileName == null ? '' : fileName));
+	}
+
+	/** Removes leftovers from a previous session — and only those. */
 	function sweepTempDir() {
 		if (!hasNode()) return;
 		try {
 			var dir = ensureTempDir();
 			fs.readdirSync(dir).forEach(function (name) {
+				if (!isStagedName(name)) return; // not ours: leave it where it is
 				try {
 					fs.rmSync(path.join(dir, name), { force: true, recursive: true });
 				} catch (err) { /* best effort */ }
@@ -448,6 +464,74 @@
 		return new Uint8Array(await blob.arrayBuffer());
 	}
 
+	/* ------------------------------------------------------------------ *
+	 * Writing PNGs
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * How many name variants to try before giving up.
+	 *
+	 * The search stops at the first free name, so this only bounds the
+	 * pathological case of a folder holding a thousand identical exports.
+	 */
+	var MAX_NAME_ATTEMPTS = 1000;
+
+	/** True for the errors that mean "something is already at this path". */
+	function pathIsTaken(err) {
+		var code = err && err.code;
+		return code === 'EEXIST' || code === 'EISDIR';
+	}
+
+	/**
+	 * The nth name to try for an export: the requested one first, then
+	 * "brush (2).png", "brush (3).png", … The extension stays put.
+	 */
+	function candidateFileName(fileName, attempt) {
+		if (attempt <= 1) return fileName;
+
+		var dot = fileName.lastIndexOf('.');
+		if (dot <= 0) return fileName + ' (' + attempt + ')';
+		return fileName.slice(0, dot) + ' (' + attempt + ')' + fileName.slice(dot);
+	}
+
+	/**
+	 * Writes bytes into `directory` under a name that is not yet taken —
+	 * and never replaces a file that is already there.
+	 *
+	 * `writeFileSync` is called with the exclusive `wx` flag, so creating the
+	 * file *fails* with EEXIST instead of truncating an existing one. That
+	 * matters beyond convenience: a separate `existsSync` check followed by a
+	 * plain write would leave a window in which another writer could create
+	 * the file between the two calls, and the check would be worthless. Here
+	 * the check and the create are a single atomic operation, so a collision
+	 * is detected even if it happens mid-flight — the next candidate name is
+	 * simply tried.
+	 *
+	 * @returns {{path: string, fileName: string, requestedFileName: string, renamed: boolean}}
+	 */
+	function writeFileWithoutReplacing(directory, requestedFileName, bytes) {
+		if (!hasNode()) throw new Error('Filesystem access is unavailable.');
+
+		for (var attempt = 1; attempt <= MAX_NAME_ATTEMPTS; attempt++) {
+			var fileName = candidateFileName(requestedFileName, attempt);
+			var fullPath = path.join(directory, fileName);
+			try {
+				fs.writeFileSync(fullPath, bytes, { flag: 'wx' });
+			} catch (err) {
+				if (pathIsTaken(err)) continue;
+				throw err;
+			}
+			return {
+				path: fullPath,
+				fileName: fileName,
+				requestedFileName: requestedFileName,
+				renamed: fileName !== requestedFileName
+			};
+		}
+
+		throw new Error('Could not find an unused name for "' + requestedFileName + '" in that folder.');
+	}
+
 	/**
 	 * Adds a rendered canvas to the Eagle library as a PNG.
 	 *
@@ -455,6 +539,10 @@
 	 * keeps large payloads out of the IPC channel. `addFromPath` resolves
 	 * only once Eagle has taken the file, so the staged copy is removed
 	 * immediately afterwards.
+	 *
+	 * Staging goes through the same non-replacing write as an export: the
+	 * scratch copy is throwaway, but there is no reason for any write in the
+	 * plugin to be destructive.
 	 *
 	 * @returns {Promise<{id: string|null, path: string}>}
 	 */
@@ -468,10 +556,10 @@
 		var opts = options || {};
 		var dir = ensureTempDir();
 		var safeName = sanitizeName(opts.name);
-		var filePath = path.join(dir, Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '-' + safeName + '.png');
+		var stagingName = Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '-' + safeName + '.png';
 
 		var bytes = await canvasToPngBytes(canvas);
-		fs.writeFileSync(filePath, Buffer.from(bytes));
+		var filePath = writeFileWithoutReplacing(dir, stagingName, Buffer.from(bytes)).path;
 
 		try {
 			var payload = { name: safeName };
@@ -489,13 +577,20 @@
 		}
 	}
 
-	/** Writes a canvas into a real folder on disk. */
+	/**
+	 * Writes a canvas as a PNG into a real folder on disk.
+	 *
+	 * An existing file of the same name is never replaced. If the folder
+	 * already holds `Soft Round.png`, this export lands beside it as
+	 * `Soft Round (2).png` and the result says so, so the caller can tell the
+	 * user which file it actually wrote rather than leaving them to guess.
+	 *
+	 * @returns {Promise<{path: string, fileName: string, requestedFileName: string, renamed: boolean}>}
+	 */
 	async function saveCanvasToFolder(canvas, directory, fileName) {
 		if (!hasNode()) throw new Error('Filesystem access is unavailable.');
 		var bytes = await canvasToPngBytes(canvas);
-		var fullPath = path.join(directory, sanitizeName(fileName) + '.png');
-		fs.writeFileSync(fullPath, Buffer.from(bytes));
-		return fullPath;
+		return writeFileWithoutReplacing(directory, sanitizeName(fileName) + '.png', Buffer.from(bytes));
 	}
 
 	function showItemInFolder(fullPath) {
@@ -618,6 +713,7 @@
 
 		ensureTempDir: ensureTempDir,
 		sweepTempDir: sweepTempDir,
+		isStagedName: isStagedName,
 		readFileBytes: readFileBytes,
 		fileSize: fileSize,
 		baseName: baseName,
@@ -640,6 +736,8 @@
 		canvasToBlob: canvasToBlob,
 		canvasToPngBytes: canvasToPngBytes,
 		addCanvasToLibrary: addCanvasToLibrary,
+		writeFileWithoutReplacing: writeFileWithoutReplacing,
+		candidateFileName: candidateFileName,
 		saveCanvasToFolder: saveCanvasToFolder,
 		showItemInFolder: showItemInFolder,
 

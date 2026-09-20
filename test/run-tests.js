@@ -15,6 +15,7 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const ABR = require('../js/abr.js');
 // The renderer only touches the DOM inside createCanvas(), which nothing here
@@ -893,6 +894,20 @@ section('file identity (bridge helpers)');
 			'pathKey keeps different files apart');
 		eq(bridge.pathKey(null), null, 'pathKey of no path is null');
 
+		// --- what may be removed from the shared temp folder -------------
+		ok(typeof bridge.isStagedName === 'function', 'bridge exposes isStagedName()');
+
+		if (typeof bridge.isStagedName === 'function') {
+			// The sweep must only ever collect the plugin's own staging files,
+			// never something else that landed in the same temp folder.
+			ok(bridge.isStagedName('1755000000000-k3f9x1-Soft Round.png'), 'a staged PNG is recognised');
+			ok(bridge.isStagedName('1755000000000-a-brush.png'), 'a short random part is still staged');
+			ok(!bridge.isStagedName('brush.png'), 'a PNG without the staging prefix is left alone');
+			ok(!bridge.isStagedName('My Brushes.abr'), 'a brush set is left alone');
+			ok(!bridge.isStagedName('notes.txt'), 'an unrelated file is left alone');
+			ok(!bridge.isStagedName(''), 'an empty name is left alone');
+		}
+
 		// --- the load/duplicate/replace rule -----------------------------
 		ok(typeof bridge.classifySource === 'function', 'bridge exposes classifySource()');
 
@@ -1170,16 +1185,116 @@ section('real-world files (optional)');
 }
 
 /* ==================================================================== *
+ * Exports never replace an existing file
+ * ==================================================================== */
+
+/**
+ * Both export flows end in `bridge.saveCanvasToFolder()`, so the collision
+ * rule is checked there against a real directory. The canvas is faked —
+ * the bridge only asks it for a PNG blob — so no browser is needed, and the
+ * payload doubles as the file contents, which makes "was the first file
+ * touched?" a byte comparison rather than a guess.
+ */
+async function exportChecks() {
+	const bridge = globalThis.BrushBoxBridge;
+	if (!bridge || typeof bridge.saveCanvasToFolder !== 'function') {
+		ok(false, 'bridge exposes saveCanvasToFolder()');
+		return;
+	}
+
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'brushbox-export-'));
+	const canvasWith = (payload) => ({
+		toBlob(callback) {
+			callback({ arrayBuffer: () => Promise.resolve(new Uint8Array(payload).buffer) });
+		}
+	});
+
+	try {
+		section('exports never replace an existing file');
+
+		// The numbering keeps the extension last, so the file stays a PNG to
+		// anything that looks at the name.
+		eq(bridge.candidateFileName('Soft Round.png', 1), 'Soft Round.png', 'the first candidate is the name as asked');
+		eq(bridge.candidateFileName('Soft Round.png', 2), 'Soft Round (2).png', 'later candidates are numbered');
+		eq(bridge.candidateFileName('a.b.png', 3), 'a.b (3).png', 'only the last dot counts as the extension');
+		eq(bridge.candidateFileName('no-extension', 2), 'no-extension (2)', 'a name with no extension still numbers');
+
+		const first = await bridge.saveCanvasToFolder(canvasWith([1, 2, 3, 4]), dir, 'Soft Round');
+		eq(first.fileName, 'Soft Round.png', 'a free name is used exactly as asked');
+		eq(first.renamed, false, 'nothing in the way means no rename to report');
+		eq(first.path, path.join(dir, 'Soft Round.png'), 'the reported path is the file that was written');
+		eq(fs.readFileSync(first.path).length, 4, 'the PNG lands on disk with its bytes intact');
+
+		// The finding this suite exists to hold shut: exporting the same name
+		// twice must add a file, never replace one.
+		const second = await bridge.saveCanvasToFolder(canvasWith([9, 9, 9, 9]), dir, 'Soft Round');
+		eq(second.fileName, 'Soft Round (2).png', 'a taken name is given a numbered twin');
+		eq(second.renamed, true, 'the caller is told the name changed');
+		ok(fs.readFileSync(first.path).equals(Buffer.from([1, 2, 3, 4])),
+			'the first export is byte-for-byte untouched');
+		ok(fs.readFileSync(second.path).equals(Buffer.from([9, 9, 9, 9])),
+			'the second export holds its own bytes');
+
+		const third = await bridge.saveCanvasToFolder(canvasWith([7]), dir, 'Soft Round');
+		eq(third.fileName, 'Soft Round (3).png', 'numbering keeps counting');
+		eq(fs.readdirSync(dir).length, 3, 'three exports of one name leave three files');
+
+		// A name that sanitizes away entirely still has to resolve to
+		// something writable.
+		const fallback = await bridge.saveCanvasToFolder(canvasWith([5]), dir, '...');
+		eq(fallback.fileName, 'brush.png', 'an unusable name falls back to "brush"');
+
+		// A directory sitting at the target name is not a file to replace
+		// either, so the export steps over it rather than failing.
+		fs.mkdirSync(path.join(dir, 'Taken.png'));
+		const past = await bridge.saveCanvasToFolder(canvasWith([6]), dir, 'Taken');
+		eq(past.fileName, 'Taken (2).png', 'a directory at the name is stepped over');
+		ok(fs.statSync(path.join(dir, 'Taken (2).png')).isFile(), 'the file beside it is a real file');
+
+		// The start-up sweep collects staging files by name, so the generator
+		// and the matcher have to agree — a mismatch would silently stop
+		// cleaning up. Eagle is faked just far enough for addFromPath to
+		// resolve, which is all the staging path needs.
+		const hadEagle = Object.prototype.hasOwnProperty.call(globalThis, 'eagle');
+		const previousEagle = globalThis.eagle;
+		globalThis.eagle = { item: { addFromPath: () => Promise.resolve('item-1') } };
+		try {
+			const staged = await bridge.addCanvasToLibrary(canvasWith([1, 2]), { name: 'Staged Check' });
+			ok(bridge.isStagedName(path.basename(staged.path)),
+				'a staged file is one the sweep recognises (' + path.basename(staged.path) + ')');
+			ok(!fs.existsSync(staged.path), 'the staged copy is deleted once Eagle has taken it');
+		} finally {
+			if (hadEagle) globalThis.eagle = previousEagle;
+			else delete globalThis.eagle;
+		}
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+}
+
+/* ==================================================================== *
  * Summary
  * ==================================================================== */
 
-console.log('\n' + '─'.repeat(58));
-if (failed) {
-	console.log(`${failed} failed, ${passed} passed`);
-	console.log('\nFailures:');
-	for (const f of failures) console.log('  · ' + f);
-	process.exit(1);
-} else {
-	console.log(`All ${passed} assertions passed.`);
-	console.log('Fixtures written to test/fixtures/');
+function reportSummary() {
+	console.log('\n' + '─'.repeat(58));
+	if (failed) {
+		console.log(`${failed} failed, ${passed} passed`);
+		console.log('\nFailures:');
+		for (const f of failures) console.log('  · ' + f);
+		process.exit(1);
+	} else {
+		console.log(`All ${passed} assertions passed.`);
+		console.log('Fixtures written to test/fixtures/');
+	}
 }
+
+// The export checks await the PNG encoder, so the summary is reported from
+// their promise. Every synchronous section above has already run by the time a
+// microtask fires, so no result can be missed.
+exportChecks()
+	.catch((err) => {
+		failed++;
+		failures.push('export checks threw: ' + (err && err.message));
+	})
+	.then(reportSummary);

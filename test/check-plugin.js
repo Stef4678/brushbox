@@ -331,6 +331,45 @@ section('Export defaults');
 }
 
 /* ==================================================================== *
+ * File safety
+ * ==================================================================== */
+
+section('Exports never replace a file');
+{
+	// Comments come out first: bridge.js names these calls in prose.
+	const bridge = read('js/bridge.js')
+		.replace(/\/\*[\s\S]*?\*\//g, '')
+		.replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+	// Every filesystem write in the plugin lives in the bridge, and every one
+	// of them must create exclusively — `wx` makes the write fail with EEXIST
+	// when the name is taken rather than truncating what is already there.
+	// A plain write here would silently reintroduce the collision the review
+	// rejected, so it is worth a standing check.
+	const writes = Array.from(bridge.matchAll(/writeFileSync\([\s\S]*?\);/g), (m) => m[0]);
+	ok(writes.length > 0, 'bridge.js writes files (' + writes.length + ' call site' +
+		(writes.length === 1 ? '' : 's') + ')');
+
+	const exclusive = writes.filter((call) => /flag:\s*'wx'/.test(call));
+	ok(exclusive.length === writes.length,
+		'every writeFileSync creates exclusively (' + exclusive.length + '/' + writes.length + ' use wx)');
+
+	ok(/requestedFileName/.test(bridge) && /renamed:/.test(bridge),
+		'bridge.js reports the name it wrote and whether it had to change');
+
+	const app = read('js/app.js');
+	ok(/saveCanvasToFolder\(/.test(app), 'app.js exports through saveCanvasToFolder()');
+	ok(/saved\.renamed/.test(app), 'app.js discloses a rename instead of hiding it');
+
+	// The three flows the review named — current-brush PNG, Ctrl/Cmd+S and the
+	// contact sheet — all run through that one helper.
+	const helper = (app.match(/saveCanvasToFolder\(/g) || []).length;
+	ok(helper >= 2, 'both the brush export and the contact sheet call it (' + helper + ' call sites)');
+	ok(/key\.toLowerCase\(\) === 's'[\s\S]{0,120}exportCurrentPng\(\)/.test(app),
+		'the Ctrl/Cmd+S shortcut reuses the same export flow');
+}
+
+/* ==================================================================== *
  * Summary
  * ==================================================================== */
 
